@@ -672,29 +672,31 @@ function setClientName(spanId, name, possessive = false) {
     setClientName('r_hand_correction_name', clientName, true);
     setClientName('r_expert_sugg_name', clientName);
 
-    // Mistakes in signature
-    
-   const list = document.getElementById("r_mistakes_list");
-list.innerHTML = "";
+      const list = document.getElementById("r_mistakes_list");
+          list.innerHTML = "";
 
-document.querySelectorAll(".mistake-desc-block").forEach(block => {
-  const title = block.querySelector("strong").textContent;
-  const desc = block.querySelector("textarea").value.trim();
+          document.querySelectorAll(".mistake-desc-block").forEach(block => {
+            // 1. UPDATED: Look for the input field instead of the strong tag
+            const titleInput = block.querySelector("input.editable-mistake-title");
+            // 2. Fallback safely just in case
+            const title = titleInput ? titleInput.value.trim() : "Untitled Mistake"; 
+            
+            const desc = block.querySelector("textarea").value.trim();
 
-  const li = document.createElement("li");
-  li.className = "mistake-item";
+            const li = document.createElement("li");
+            li.className = "mistake-item";
 
-  const t = document.createElement("div");
-  t.className = "mistake-title";
-  t.textContent = title;
+            const t = document.createElement("div");
+            t.className = "mistake-title";
+            t.textContent = title; // This now writes your edited title to the preview!
 
-  const p = document.createElement("p");
-  p.textContent = desc;
+            const p = document.createElement("p");
+            p.textContent = desc;
 
-  li.appendChild(t);
-  li.appendChild(p);
-  list.appendChild(li);
-});
+            li.appendChild(t);
+            li.appendChild(p);
+            list.appendChild(li);
+          });
 const preview = document.getElementById("r_handwritingMistakes");
 preview.innerHTML = "";
 // ======================
@@ -930,6 +932,10 @@ function renderCorrectionDescriptions(selectedTitles) {
   });
   applyFormToReport();
 }
+
+// ======================
+// Signature Mistakes 
+// ======================
 function renderMistakeDescriptions(selectedTitles) {
   const container = document.getElementById("mistakeDescriptions");
   const store = getSignatureMistakeStore();
@@ -940,13 +946,19 @@ function renderMistakeDescriptions(selectedTitles) {
     const block = document.createElement("div");
     block.className = "mistake-desc-block";
 
-    const heading = document.createElement("strong");
-    heading.textContent = title;
+    // 1. Keep track of the current key in case the user renames it
+    let currentTitleKey = title; 
+
+    // 2. Replace <strong> with an editable <input>
+    const heading = document.createElement("input");
+    heading.type = "text";
+    heading.value = currentTitleKey;
+    heading.className = "editable-mistake-title"; // CSS class for styling
 
     const textarea = document.createElement("textarea");
     textarea.className = "sign_mistake_desc";
     textarea.placeholder = "Enter graphological interpretation...";
-    textarea.value = store[title] || "";
+    textarea.value = store[currentTitleKey] || "";
 
     const saveBtn = document.createElement("button");
     saveBtn.type = "button";
@@ -957,9 +969,31 @@ function renderMistakeDescriptions(selectedTitles) {
     status.className = "save-status";
     status.style.marginLeft = "8px";
 
-    // 🔁 Auto-save while typing
+    // 3. NEW: Handle Title Changes
+    heading.onchange = () => {
+      const newTitle = heading.value.trim();
+      
+      // If the title actually changed and isn't empty
+      if (newTitle && newTitle !== currentTitleKey) {
+        // Move the description to the new key and delete the old one
+        store[newTitle] = store[currentTitleKey];
+        delete store[currentTitleKey];
+        
+        // Update our tracker to the new name
+        currentTitleKey = newTitle; 
+
+        saveSignatureMistakeStore(store);
+        applyFormToReport();
+
+        status.textContent = "✓ Title Updated";
+        status.style.color = "#28a745";
+        setTimeout(() => { status.textContent = ""; }, 1500);
+      }
+    };
+
+    // 4. UPDATED: Auto-save while typing (Uses currentTitleKey instead of title)
     textarea.oninput = () => {
-      store[title] = textarea.value;
+      store[currentTitleKey] = textarea.value;
       saveSignatureMistakeStore(store);
       applyFormToReport();
 
@@ -967,9 +1001,9 @@ function renderMistakeDescriptions(selectedTitles) {
       status.style.color = "#d39e00";
     };
 
-    // 💾 Explicit Save button
+    // 5. UPDATED: Explicit Save button (Uses currentTitleKey instead of title)
     saveBtn.onclick = () => {
-      store[title] = textarea.value;
+      store[currentTitleKey] = textarea.value;
       saveSignatureMistakeStore(store);
       applyFormToReport();
 
@@ -988,6 +1022,6 @@ function renderMistakeDescriptions(selectedTitles) {
 
     container.appendChild(block);
   });
+  
   applyFormToReport();
 }
-
