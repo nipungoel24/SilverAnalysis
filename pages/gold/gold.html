@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Silver Report</title>
+  <title>Gold Report</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="../../assets/shared/styles.css" />
+
 
   <style>
     body {
@@ -88,7 +89,7 @@
       }
 
       const hashHex = await hashPassword(password);
-      const correctHash = "b0a5b1ddc456d15ee6cb89ac681c9328477c2153b992046d97fcb93a40ab6bbd"; // hash of "mySecret123"
+      const correctHash = "b0a5b1ddc456d15ee6cb89ac681c9328477c2153b992046d97fcb93a40ab6bbd"; // SHA-256 of "mySecret123"
 
       if (hashHex === correctHash) {
         localStorage.setItem(AUTH_KEY, 'true');
@@ -133,44 +134,59 @@
 <body>
   <!-- Navigation Buttons -->
   <div class="nav-buttons">
-    <button onclick="goToPage('silver.html')">Silver Report</button>
-    <button onclick="goToPage('gold.html')">Gold Report</button>
+    <button onclick="goToPage('../silver/silver.html')">Silver Report</button>
+    <button onclick="goToPage('../gold/gold.html')">Gold Report</button>
     <button onclick="logout()">Logout</button>
   </div>
 
   <!-- Password Form -->
   <div id="password-form">
-    <h2>Enter Password to Login Silver Personality Report</h2>
+    <h2>Enter Password to Login Gold Personality Report</h2>
     <form id="form" onsubmit="handlePasswordSubmit(event)">
       <input type="password" id="password-input" placeholder="Enter password..." required />
       <button type="submit">Submit</button>
     </form>
   </div>
 
-  <!-- Hidden Content Section -->
   <div id="loader" class="loader-container" style="display: none;">
     <div class="loader"></div>
     <p>Generating PDF, please wait...</p>
   </div>
 
+  <!-- Hidden Content Section -->
   <div id="content">
-    <h2>Generate Your Silver Personality Report</h2>
+    <h2>Generate Your Gold Personality Report</h2>
 
     <div class="section">
       <h2>Enter Full Name</h2>
       <input type="text" id="user-name" placeholder="Enter your name...">
     </div>
-
+    
     <div id="sections"></div>
 
-    <div class="section">
-      <h2>Signature Correction</h2>
-      <input type="file" id="signature-upload" accept="image/png, image/jpeg">
-      <p id="signature-status" class="status-message"></p>
-      <img id="signature-preview">
-      <textarea id="Signature-Correction" placeholder="Enter details about Signature Correction..."></textarea>
+    <div id="custom-questions-section">
+      <h2>Personalized Questions and Answers</h2>
+      <div id="custom-questions-container"></div>
+      <button id="add-question-btn">➕ Add Question</button>
     </div>
 
+    <div class="section">
+  <!-- Dropdown instead of static h2 -->
+  <label for="heading-select"><strong>Select Section:</strong></label>
+  <select id="heading-select">
+    <option value="Signature Correction" selected>Signature Correction</option>
+    <option value="Mistakes in Signature">Mistakes in Signature</option>
+  </select>
+
+  <!-- Dynamic heading -->
+  <h2 id="sign-section-heading">Signature Correction</h2>
+
+  <input type="file" id="signature-upload" accept="image/png, image/jpeg">
+  <p id="signature-status" class="status-message"></p>
+  <img id="signature-preview">
+  <textarea id="Signature-Correction" placeholder="Enter details about Signature Correction..."></textarea>
+</div>
+    
     <div class="section">
       <h2>Upload Remedy PDFs</h2>
       <input type="file" id="pdf-upload" accept="application/pdf" multiple>
@@ -180,7 +196,16 @@
     <button id="download-btn">Download PDF</button>
     <button id="view-btn">View PDF</button>
   </div>
+  <script>
+  const headingSelect = document.getElementById("heading-select");
+  const sectionHeading = document.getElementById("sign-section-heading");
+  const textArea = document.getElementById("Signature-Correction");
 
-  <script src="script.js"></script>
+  headingSelect.addEventListener("change", function () {
+    sectionHeading.textContent = this.value;
+    textArea.placeholder = `Enter details about ${this.value}...`;
+  });
+</script>
+  <script src="script_gold.js"></script>
 </body>
 </html>

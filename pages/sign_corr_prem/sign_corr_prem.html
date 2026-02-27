@@ -492,97 +492,11 @@
       </div>
     </div>
   </div>
+  <script src="js/sign-premium.constants.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/sign-premium.ui.js"></script>
+  <script src="js/sign-premium.pdf.js"></script>
+  <script src="js/export-html.js"></script>
   <script src="sign_premium.js"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const btn = document.getElementById("downloadHtml");
-      if (!btn) return;
-    
-      btn.addEventListener("click", async () => {
-        const previewArea = document.querySelector(".preview-area");
-        if (!previewArea) return;
-      
-        // 1️⃣ Collect all CSS from the page
-        const styles = Array.from(document.styleSheets)
-          .map(sheet => {
-            try {
-              return Array.from(sheet.cssRules)
-                .map(rule => rule.cssText)
-                .join("");
-            } catch {
-              return "";
-            }
-          })
-          .join("");
-        
-        // 2️⃣ Clone the preview section
-        const clone = previewArea.cloneNode(true);
-        
-        // 3️⃣ Inline all images as base64
-        const images = clone.querySelectorAll("img");
-        for (const img of images) {
-          if (!img.src) continue;
-          try {
-            img.src = await toCompressedDataURL(img.src, 0.7);
-          } catch (e) {
-            console.warn("Image failed:", img.src);
-          }
-        }
-      
-        // 4️⃣ Build standalone HTML
-        const html = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Signature Report</title>
-    <style>
-    ${styles}
-    </style>
-    </head>
-    <body>
-    ${clone.outerHTML}
-    </body>
-    </html>
-    `;
-
-        // 5️⃣ Download file
-        const blob = new Blob([html], { type: "text/html" });
-        const url = URL.createObjectURL(blob);
-
-        const name =
-          document.getElementById("r_name")?.textContent
-            ?.trim()
-            ?.replace(/\s+/g, "_")
-            ?.toLowerCase() || "signature_report";
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${name}.html`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      });
-    
-      // helper function
-      function toCompressedDataURL(url, quality = 0.7) {
-        return new Promise((resolve, reject) => {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.onload = () => {
-            const canvas = document.createElement("canvas");
-            canvas.width = img.width;
-            canvas.height = img.height;
-            canvas.getContext("2d").drawImage(img, 0, 0);
-            resolve(canvas.toDataURL("image/jpeg", quality));
-          };
-          img.onerror = reject;
-          img.src = url;
-        });
-      }
-    });
-    </script>
   </body>
 </html>

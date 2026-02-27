@@ -84,9 +84,9 @@ function generatePDF(callback) {
 
         // Load images first
         let coverImage = new Image();
-        coverImage.src = "page1.png";
+        coverImage.src = "../../assets/shared/page1.png";
         let logoImage = new Image();
-        logoImage.src = "logo.png";
+        logoImage.src = "../../assets/shared/logo.png";
 
         // Wait for both images to load before proceeding
         let imagesLoaded = 0;
@@ -415,7 +415,7 @@ function viewPDF() {
     });
 }
 function appendFixedPDF(doc, callback) {
-    fetch("last.pdf")
+    fetch("../../assets/shared/last.pdf")
         .then(res => res.arrayBuffer())
         .then(data => {
             pdfjsLib.getDocument({ data }).promise.then(pdfDoc => {
