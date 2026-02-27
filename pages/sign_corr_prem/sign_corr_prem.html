@@ -20,10 +20,10 @@
       <!-- Client info -->
       <div class="form-section">
         <label for="clientName">Client Name</label>
-        <input id="clientName" type="text" value="Meera Khan" />
+        <input id="clientName" type="text" value="Meera Khan" oninput="applyFormToReport()"/>
 
         <label for="reportDate">Date</label>
-        <input id="reportDate" type="text"/>
+        <input id="reportDate" type="text" oninput="applyFormToReport()"/>
         <script>
           const today = new Date();
           const formattedDate = today.toLocaleDateString("en-US", {
@@ -36,7 +36,7 @@
         </script>
 
         <label for="reportId">Report ID</label>
-        <input id="reportId" type="text" value="EXP-2026-001" />
+        <input id="reportId" type="text" value="EXP-2026-001" oninput="applyFormToReport()"/>
       </div>
 
       <!-- Section 1 Current signature Image Upload -->

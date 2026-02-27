@@ -808,9 +808,9 @@ createMultipleImageUpload("uploadThree", "threePreview", "r_corrected_imgs", 3);
 // ---------------------------------------------------------------------------
 
 function applyFormToReport() {
-  const clientName = document.getElementById("clientName")?.value || "�";
-  const reportDate = document.getElementById("reportDate")?.value || "�";
-  const reportId = document.getElementById("reportId")?.value || "�";
+  const clientName = document.getElementById("clientName")?.value || "Add Client Name";
+  const reportDate = document.getElementById("reportDate")?.value || "Add Date";
+  const reportId = document.getElementById("reportId")?.value || "Add ID";
 
   // Header + identity block
   setClientName("r_name", clientName);
