@@ -9,7 +9,7 @@
  * 3) Run one-time UI bootstrapping (dropdown/listeners/uploads)
  */
 
-import { createEditableDropdown } from "./ui/shared.js";
+import { createEditableDropdown, runLLMForSection } from "./ui/shared.js";
 import { initSignatureMistakeDropdown } from "./ui/section-1.js";
 import {
   refreshHandwritingCategoryDropdown,
@@ -37,6 +37,7 @@ import { applyFormToReport } from "./ui/report-sync.js";
 // Public bridge surface for legacy/global consumers.
 // This prevents breaking existing HTML/pdfs while internally using ES modules.
 globalThis.createEditableDropdown = createEditableDropdown;
+globalThis.runLLMForSection = runLLMForSection;
 globalThis.initSignatureMistakeDropdown = initSignatureMistakeDropdown;
 globalThis.renderCorrectionDescriptions = renderCorrectionDescriptions;
 globalThis.renderHandwritingCorrectionDescriptions = renderHandwritingCorrectionDescriptions;

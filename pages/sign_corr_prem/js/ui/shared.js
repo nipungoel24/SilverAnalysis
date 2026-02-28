@@ -187,46 +187,73 @@ export async function runLLMForSection({
     return;
   }
 
-  loader.style.display = "inline-block";
-  button.classList.add("disabled");
+  if (loader) loader.style.display = "inline-block";
+  if (button) button.classList.add("disabled");
 
-  let targetURL = "";
-  let apiKey = "";
   const host = window.location.hostname;
 
-  if (host === "menkadev.github.io") {
-    targetURL = "https://exploreemebackend-1056855884926.us-central1.run.app";
-    apiKey = "ek8pfnyVmlvvjyKGf665rhHpioob2hrORjw0BxwH";
-  } else {
-    targetURL = "http://127.0.0.1:8000";
-    apiKey = "yhW10OA9omHFZS9nrcKfNJhhXM6umfpCWpScxkWx";
-  }
+  const isLocalHost = host === "localhost" || host === "127.0.0.1";
+  const localTarget = {
+    url: "http://127.0.0.1:8000",
+    key: "yhW10OA9omHFZS9nrcKfNJhhXM6umfpCWpScxkWx"
+  };
+  const prodTarget = {
+    url: "https://exploreemebackend-1056855884926.us-central1.run.app",
+    key: "ek8pfnyVmlvvjyKGf665rhHpioob2hrORjw0BxwH"
+  };
+  // Important:
+  // Production backend currently allows CORS for hosted origin(s), not localhost.
+  // So in local development we must call local backend only.
+  const targets = isLocalHost ? [localTarget] : [prodTarget];
 
   try {
-    const tRes = await fetch(`${targetURL}/ai_automations_handler/fetch-data/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: apiKey
-      },
-      body: JSON.stringify({ template_id: templateId, pointers: text })
-    });
+    let llmData = null;
+    let lastErr = null;
 
-    const tData = await tRes.json();
+    for (const target of targets) {
+      try {
+        const tRes = await fetch(`${target.url}/ai_automations_handler/fetch-data/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: target.key
+          },
+          body: JSON.stringify({ template_id: templateId, pointers: text })
+        });
+        if (!tRes.ok) {
+          const errText = await tRes.text();
+          throw new Error(`Template fetch failed (${tRes.status}): ${errText}`);
+        }
 
-    const llmRes = await fetch(`${targetURL}/ai_automations_handler/process-llm/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: apiKey
-      },
-      body: JSON.stringify({
-        system_template: tData.system_template,
-        pointers: tData.pointers
-      })
-    });
+        const tData = await tRes.json();
 
-    const llmData = await llmRes.json();
+        const llmRes = await fetch(`${target.url}/ai_automations_handler/process-llm/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: target.key
+          },
+          body: JSON.stringify({
+            system_template: tData.system_template,
+            pointers: tData.pointers
+          })
+        });
+        if (!llmRes.ok) {
+          const errText = await llmRes.text();
+          throw new Error(`LLM processing failed (${llmRes.status}): ${errText}`);
+        }
+
+        llmData = await llmRes.json();
+        break;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+
+    if (!llmData) {
+      throw lastErr || new Error("LLM request failed on all configured backends.");
+    }
+
     inputEl.value = llmData.output;
 
     if (typeof afterRun === "function") {
@@ -234,9 +261,13 @@ export async function runLLMForSection({
     }
   } catch (err) {
     console.error("LLM error:", err);
-    alert("Something went wrong while generating text.");
+    if (isLocalHost) {
+      alert("LLM request failed. Local backend is not reachable at http://127.0.0.1:8000. Start backend and try again.");
+    } else {
+      alert("LLM request failed. Check console for the exact API error.");
+    }
   } finally {
-    loader.style.display = "none";
-    button.classList.remove("disabled");
+    if (loader) loader.style.display = "none";
+    if (button) button.classList.remove("disabled");
   }
 }

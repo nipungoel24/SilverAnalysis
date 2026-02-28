@@ -1,10 +1,22 @@
+﻿import { applyFormToReport } from "./report-sync.js";
+
 /**
- * sign_corr_prem/js/sign-premium.pdf.js
+ * PDF module for sign_corr_std.
  *
- * PDF generation pipeline and final page bootstrapping hooks
- * (preview/download handlers and initial apply).
+ * Purpose:
+ * Converts current report-preview DOM state into a styled, multi-section PDF.
+ *
+ * Section Map:
+ * 1) domToPdfBlob() - full PDF composition pipeline
+ *    1.1 Layout/colors/typography constants
+ *    1.2 Drawing helper utilities
+ *    1.3 Section rendering blocks (header -> footer)
+ * 2) bindPdfActions() - UI event wiring for preview/download + initial sync
  */
-async function domToPdfBlob() {
+export async function domToPdfBlob() {
+  // ---------------------------------------------------------------------------
+  // Section 1.1: Document Setup (page metrics + theme system)
+  // ---------------------------------------------------------------------------
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "pt", format: "a4" });
 
@@ -24,6 +36,9 @@ async function domToPdfBlob() {
     warning: [255, 243, 205]
   };
 
+  // ---------------------------------------------------------------------------
+  // Section 1.2: Core Drawing Helpers
+  // ---------------------------------------------------------------------------
   function addPage() {
     doc.addPage();
     yPosition = 40;
@@ -45,7 +60,7 @@ async function domToPdfBlob() {
     }
   }
 
-  // Font size constants
+  // Centralized type scale used across all PDF sections.
   const FONT_SIZES = {
     mainTitle: 24,
     sectionTitle: 18,
@@ -66,55 +81,7 @@ async function domToPdfBlob() {
       yPosition += 18;
     });
   }
-  function addTextBoxWithBullets(title, bullets, backgroundColor) {
-  const padding = 20;
-  const lineHeight = 16;
 
-  // Measure height
-  let totalLines = 2; // title spacing
-  bullets.forEach(b => {
-    totalLines += doc.splitTextToSize(b.title, usableWidth - 2 * padding).length;
-    totalLines += doc.splitTextToSize(b.desc, usableWidth - 2 * padding).length;
-    totalLines += 1;
-  });
-
-  const boxHeight = totalLines * lineHeight + padding * 2;
-  checkPageBreak(boxHeight + 20);
-
-  // Background
-  setColor(backgroundColor, 'fill');
-  doc.roundedRect(margin, yPosition, usableWidth, boxHeight, 10, 10, 'F');
-
-  let cursorY = yPosition + padding;
-
-  // Title
-  doc.setFont('Georgia', 'bold');
-  doc.setFontSize(14);
-  setColor([0, 0, 0], 'text');
-  doc.text(title, margin + padding, cursorY);
-  cursorY += lineHeight * 2;
-
-  // Bullets
-  bullets.forEach((b, i) => {
-    doc.setFont('Georgia', 'bold');
-    doc.text(`${i + 1}. ${b.title}`, margin + padding, cursorY);
-    cursorY += lineHeight;
-
-    doc.setFont('Georgia', 'normal');
-    const descLines = doc.splitTextToSize(
-      b.desc,
-      usableWidth - 2 * padding
-    );
-    descLines.forEach(line => {
-      doc.text(line, margin + padding + 12, cursorY);
-      cursorY += lineHeight;
-    });
-
-    cursorY += 6;
-  });
-
-  yPosition += boxHeight + 20;
-}
   function addBulletPoint(title, desc) {
     const lineHeight = 16;
     const boxPadding = 12;
@@ -195,7 +162,7 @@ async function domToPdfBlob() {
     doc.setFont('Georgia', 'normal');
     doc.setFontSize(FONT_SIZES.bodyText);
     bullets.forEach(point => {
-      doc.text(`• ${point}`, margin + 20, boxY, { maxWidth: usableWidth - 40 });
+      doc.text(`â€¢ ${point}`, margin + 20, boxY, { maxWidth: usableWidth - 40 });
       boxY += lineHeight;
     });
 
@@ -306,6 +273,9 @@ async function domToPdfBlob() {
     yPosition += boxHeight + 20;
   }
 
+  // ---------------------------------------------------------------------------
+  // Section 1.3: Report Rendering Flow (top-to-bottom sequence)
+  // ---------------------------------------------------------------------------
   // ---------------- HEADER ----------------
   setColor(colors.primary, 'fill');
   doc.rect(0, 0, pageWidth, 100, 'F');
@@ -349,48 +319,24 @@ async function domToPdfBlob() {
   yPosition += 12;
   addImageBox('r_main_img', 180, [255, 245, 245], [222, 0, 0], "No current signature uploaded");
 
-  document
-  .querySelectorAll("#mistakeDescriptions .mistake-desc-block")
-  .forEach((block, i) => {
-    const title = block.querySelector("strong")?.textContent || "";
-    const desc = block.querySelector("textarea")?.value || "";
-
+  const mistakeInputs = document.querySelectorAll('#sign_mistakes_list .sign_mistake_item');
+  mistakeInputs.forEach(item => {
+    const title = item.querySelector('.sign_mistake_title')?.value.trim() || '';
+    const desc = item.querySelector('.sign_mistake_desc')?.value.trim() || '';
     if (title || desc) {
-      addBulletPoint(`${i + 1}. ${title}`, desc);
+      addBulletPoint(title, desc);
     }
   });
 
   // ---------------- 2. Mistakes in Handwriting ----------------
-  const mistakeName = document.getElementById('r_hand_mistake_name')?.textContent || '';
-  addSection(`2. GRAPHOLOGICAL MISTAKES IN HANDWRITING`);
+  addSection('2. GRAPHOLOGICAL MISTAKES IN HANDWRITING');
   yPosition += 12;
   addImageBox('r_handwriting_img', 180, [255, 245, 245], [222, 0, 0], "No current handwriting uploaded");
 
-  
-  const handwritingMistakesTitle =
-  `Graphological Mistakes in ${mistakeName} Handwriting`;
-
-const bullets = [];
-
-document
-  .querySelectorAll("#r_handwritingMistakes p")
-  .forEach(p => {
-    const strong = p.querySelector("strong");
-    if (!strong) return;
-
-    const title = strong.innerText.replace(/^\d+\.\s*/, "");
-    const desc = p.innerText.replace(strong.innerText, "").trim();
-
-    bullets.push({ title, desc });
-  });
-
-if (bullets.length) {
-  addTextBoxWithBullets(
-    handwritingMistakesTitle,
-    bullets,
-    [248, 249, 250]
-  );
-}
+  const mistakeName = document.getElementById('r_hand_mistake_name')?.textContent || '';
+  const handwritingMistakesText = document.getElementById('r_handwritingMistakes')?.textContent || "";
+  const handwritingMistakesTitle = `Graphological Mistakes in ${mistakeName} Handwriting`;
+  addTextBox(handwritingMistakesTitle, handwritingMistakesText, [248, 249, 250]);
 
   // ---------------- 3. Personality Analysis ----------------
   addSection('3. PERSONALITY ANALYSIS');
@@ -401,13 +347,13 @@ if (bullets.length) {
   const columnWidth = (usableWidth - 20) / 2;
 
   const strengthsText = Array.from(document.querySelectorAll('#r_strengths_list li'))
-    .map(li => '• ' + (li.textContent || '').trim())
+    .map(li => 'â€¢ ' + (li.textContent || '').trim())
     .join('\n');
   const strengthsLines = strengthsText ? doc.splitTextToSize(strengthsText, columnWidth - 20) : [];
   const strengthsHeight = strengthsLines.length > 0 ? (strengthsLines.length * 16) + 40 : 0;
 
   const weaknessesText = Array.from(document.querySelectorAll('#r_weaknesses_list li'))
-    .map(li => '• ' + (li.textContent || '').trim())
+    .map(li => 'â€¢ ' + (li.textContent || '').trim())
     .join('\n');
   const weaknessLines = weaknessesText ? doc.splitTextToSize(weaknessesText, columnWidth - 20) : [];
   const weaknessesHeight = weaknessLines.length > 0 ? (weaknessLines.length * 16) + 40 : 0;
@@ -566,13 +512,43 @@ if (bullets.length) {
 
   // Key Improvements
   const correctionsList = document.querySelectorAll('#r_corrections_list li');
+  if (correctionsList.length > 0) {
+    const correctionsText = Array.from(correctionsList).map(li => li.textContent).join('\n');
+    const kiLines = doc.splitTextToSize(correctionsText, usableWidth - 20);
+    const kiHeight = (kiLines.length * 16) + 50;
 
-correctionsList.forEach((li, i) => {
-  const title = li.querySelector("strong")?.innerText || `Point ${i + 1}`;
-  const desc = li.querySelector("p")?.innerText || "";
+    checkPageBreak(kiHeight + 20);
 
-  addBulletPoint(title, desc);
-});
+    doc.setFont('Georgia', 'bold');
+    doc.setFontSize(FONT_SIZES.sectionTitle);
+    setColor([0, 0, 0], 'text');
+    doc.text('Key Improvements Made:', margin, yPosition + 15);
+
+    let kiY = yPosition + 35;
+    correctionsList.forEach(li => {
+      const text = li.textContent;
+      const [beforeColon, afterColon] = text.split(':');
+
+      doc.setFont('Georgia', 'bold');
+      doc.setFontSize(FONT_SIZES.bodyText);
+      setColor([0, 0, 0], 'text');
+      doc.text('â€¢ ' + (beforeColon ? beforeColon.trim() : text), margin + 15, kiY);
+
+      if (afterColon) {
+        const offsetX = doc.getTextWidth('â€¢ ' + beforeColon.trim() + ': ') + margin + 15;
+        doc.setFont('Georgia', 'normal');
+        doc.setFontSize(FONT_SIZES.bodyText);
+
+        const wrappedText = doc.splitTextToSize(afterColon.trim(), usableWidth - (offsetX + 10));
+        doc.text(wrappedText, offsetX, kiY);
+        kiY += (wrappedText.length - 1) * 16;
+      }
+
+      kiY += 16;
+    });
+
+    yPosition += kiHeight + 20;
+  }
 
   // Section 4: Benefits
   addSection('5. BENEFITS OF CORRECTED SIGNATURE');
@@ -628,14 +604,9 @@ correctionsList.forEach((li, i) => {
   addImageBox('r_handwritingCorrection_img', 180, [248, 255, 248], [40, 167, 69], "No current handwriting uploaded");
 
   const correctionName = document.getElementById('r_hand_correction_name')?.textContent || '';
-  document
-  .querySelectorAll("#r_handwritingCorrections p")
-  .forEach((p, i) => {
-    const text = p.innerText.trim();
-    if (text) {
-      addBulletPoint(`Correction ${i + 1}`, text);
-    }
-  });
+  const handwritingCorrectionText = document.getElementById('r_handwritingCorrections')?.textContent || "";
+  const handwritingCorrectionTitle = `Graphological Corrections in ${correctionName} Handwriting`;
+  addTextBox(handwritingCorrectionTitle, handwritingCorrectionText, [248, 249, 250]);
 
   // Section 5: Practice Session
   addSection('7. HOW TO PRACTICE YOUR NEW SIGNATURE');
@@ -651,8 +622,8 @@ correctionsList.forEach((li, i) => {
   doc.setFont('Georgia', 'normal');
   doc.setFontSize(FONT_SIZES.bodyText);
   doc.text([
-    "• Use any smooth-writing pen that feels comfortable in your hand",
-    "• Get a blank notebook (unlined pages work best for free-form practice)"
+    "â€¢ Use any smooth-writing pen that feels comfortable in your hand",
+    "â€¢ Get a blank notebook (unlined pages work best for free-form practice)"
   ], margin + 15, yPosition + 45);
   yPosition += 100;
 
@@ -666,8 +637,8 @@ correctionsList.forEach((li, i) => {
   doc.setFont('Georgia', 'normal');
   doc.setFontSize(FONT_SIZES.bodyText);
   doc.text([
-    "• Continue this practice consistently for 3 months",
-    "• As you write each signature, repeat the given affirmation below"
+    "â€¢ Continue this practice consistently for 3 months",
+    "â€¢ As you write each signature, repeat the given affirmation below"
   ], margin + 15, yPosition + 45);
   yPosition += 100;
 
@@ -776,133 +747,44 @@ const legalBody = "Your signature is basically your legal stamp - it's how you o
   doc.setFont('Georgia', 'normal');
   doc.setFontSize(FONT_SIZES.bodyText);
   setColor(colors.accent, 'text');
-  doc.text('© 2025 ExplorMee Signature Correction Services. All rights reserved.', pageWidth / 2, yPosition + 25, { align: 'center' });
+  doc.text('Â© 2025 ExplorMee Signature Correction Services. All rights reserved.', pageWidth / 2, yPosition + 25, { align: 'center' });
   doc.text(`This report is confidential and prepared exclusively for ${name}`, pageWidth / 2, yPosition + 45, { align: 'center' });
 
   return doc;
 }
-function initHandwritingCorrectionDropdown() {
-  const select = document.getElementById("handCorrectionCategory");
-  const store = getHandwritingCorrectionStore();
 
-  Object.keys(store).forEach(cat => {
-    const opt = document.createElement("option");
-    opt.value = cat;
-    opt.textContent = cat;
-    select.appendChild(opt);
-  });
-  document
-  .getElementById("handCorrectionCategory")
-  .addEventListener("change", () => {
-
-    const category = handCorrectionCategory.value;
-    if (!category) return;
-
-    const store = getHandwritingCorrectionStore();
-
-    createEditableDropdown({
-  inputId: "handCorrectionInput",
-  dropdownId: "handCorrectionDropdown",
-  tagContainerId: "handCorrectionTagContainer",
-  textareaId: "handCorrections",
-  listKey: "handCorrectionTemp",
-  defaultList: store[category],
-  allowAdd: false,
-  allowRemove: false,
-  onChange: renderHandwritingCorrectionDescriptions
-});
-  });
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  applyFormToReport();
-  createEditableDropdown({
-  inputId: "strengthsInput",
-  dropdownId: "strengthsDropdown",
-  tagContainerId: "strengthsTagContainer",
-  textareaId: "strengths",
-  listKey: "strengthList",
-  defaultList: strengthList,
-  onChange: applyFormToReport
-});
-
-  createEditableDropdown({
-  inputId: "weaknessesInput",
-  dropdownId: "weaknessesDropdown",
-  tagContainerId: "weaknessesTagContainer",
-  textareaId: "weaknesses",
-  listKey: "weaknessList",
-  defaultList: weaknessList,
-  onChange: applyFormToReport
-});
-initSignatureMistakeDropdown();
-initHandwritingCorrectionDropdown();
-createEditableDropdown({
-  inputId: "correctionsInput",
-  dropdownId: "correctionsDropdown",
-  tagContainerId: "correctionsTagContainer",
-  textareaId: "corrections",
-  listKey: "signatureCorrectionTitles",
-  defaultList: Object.keys(getSignatureCorrectionStore()),
-  allowAdd: true,
-  allowRemove: true,
-  onChange: (selectedTitles) => {
-    // 🔥 THIS LINE IS REQUIRED
-    document.getElementById("corrections").value = selectedTitles.join(", ");
-
-    renderCorrectionDescriptions(selectedTitles);
-    applyFormToReport();
+// ---------------------------------------------------------------------------
+// Section 2: PDF Action Bindings
+// ---------------------------------------------------------------------------
+// Keeps button wiring isolated so the module hub can initialize this with one call.
+export function bindPdfActions() {
+  const previewBtn = document.getElementById("previewPdf");
+  if (previewBtn) {
+    previewBtn.addEventListener("click", async () => {
+      // Always sync form values first so PDF reflects latest edits.
+      applyFormToReport();
+      const node = document.getElementById("reportRoot");
+      const pdf = await domToPdfBlob(node);
+      const blob = pdf.output("blob");
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+    });
   }
-});
-});
 
-function generateOverallPersonality() {
-  runLLMForSection({
-    inputId: "overallAssessment",
-    outputId: "overallAssessment",
-    loaderId: "overallLoader",
-    buttonId: "overallBtn",
-    templateId: "overall_personality_sign_prem",
-    afterRun: applyFormToReport
-  });
-}
+  const downloadBtn = document.getElementById("downloadPdf");
+  if (downloadBtn) {
+    downloadBtn.addEventListener("click", async () => {
+      // Same sync-before-export rule for file download.
+      applyFormToReport();
+      const node = document.getElementById("reportRoot");
+      const pdf = await domToPdfBlob(node);
+      pdf.save((document.getElementById("clientName").value || "report") + ".pdf");
+    });
+  }
 
-// --- the function ends here
-
-const previewPdfBtn = document.getElementById('previewPdf');
-if (previewPdfBtn) {
-  previewPdfBtn.addEventListener('click', async () => {
+  window.addEventListener("load", () => {
+    // Ensure report preview has initial values before first interaction.
     applyFormToReport();
-    const node = document.getElementById('reportRoot');
-    const pdf = await domToPdfBlob(node);
-    const blob = pdf.output('blob');
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
   });
 }
-
-const downloadPdfBtn = document.getElementById('downloadPdf');
-if (downloadPdfBtn) {
-  downloadPdfBtn.addEventListener('click', async () => {
-    applyFormToReport();
-    const node = document.getElementById('reportRoot');
-    const pdf = await domToPdfBlob(node);
-    pdf.save((document.getElementById('clientName').value || 'report') + '.pdf');
-  });
-}
-
-// init defaults into report
-window.addEventListener('load', ()=>{
-  applyFormToReport();
-});
-
-
-
-
-
-
-
-
-
-
 
